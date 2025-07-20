@@ -277,9 +277,8 @@ jobs:
           cd ./KernelSU-Next
           cp ../../susfs4ksu/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch ./
           patch -p1 --forward --fuzz=3 < 10_enable_susfs_for_ksu.patch || true
-          #cp ../../kernel_patches/next/susfs_fix_patches/v1.5.9/fix_apk_sign.c.patch ./
-          #patch -p1 --forward --fuzz=3 < fix_apk_sign.c.patch
-          patch -p1 --forward --fuzz=3 < $GITHUB_WORKSPACE/Kernel/patchs/fix_apk_sign.c.patch
+          cp ../../kernel_patches/next/susfs_fix_patches/v1.5.9/fix_apk_sign.c.patch ./
+          patch -p1 --forward --fuzz=3 < fix_apk_sign.c.patch
           cp ../../kernel_patches/next/susfs_fix_patches/v1.5.9/fix_core_hook.c.patch ./
           patch -p1 --forward --fuzz=3 < fix_core_hook.c.patch
           cp ../../kernel_patches/next/susfs_fix_patches/v1.5.9/fix_selinux.c.patch ./
@@ -288,6 +287,11 @@ jobs:
           patch -p1 --forward --fuzz=3 < fix_ksud.c.patch
           cp ../../kernel_patches/next/susfs_fix_patches/v1.5.9/fix_rules.c.patch ./
           patch -p1 --forward --fuzz=3 < fix_rules.c.patch
+          cp ../../kernel_patches/next/susfs_fix_patches/v1.5.9/fix_sucompat.c.patch ./
+          patch -p1 --forward --fuzz=3 < fix_sucompat.c.patch
+          cp ../../kernel_patches/next/susfs_fix_patches/v1.5.9/fix_kernel_compat.c.patch ./
+          patch -p1 --forward --fuzz=3 < fix_kernel_compat.c.patch
+          
           # Apply common SUSFS patch
           cd ..
           if [ "${{ matrix.CONFIG.KernelSUSFS.branches }}" == "kernel-4.9" ]; then
@@ -380,12 +384,10 @@ jobs:
         env: 
           ARCH: ${{ steps.generate-args.outputs.ARCH }}
         run: |
-          # sed -i '$s|echo "\$res"|echo "\$res-ksusfs+"|' ./scripts/setlocalversion
-          # Run perl command to modify UTS_VERSION
-          # perl -pi -e 's{UTS_VERSION="\$\(echo \$UTS_VERSION \$CONFIG_FLAGS \$TIMESTAMP \| cut -b -\$UTS_LEN\)"}{UTS_VERSION="#1 SMP PREEMPT Sat Apr 20 04:20:00 UTC 2024"}' ./scripts/mkcompile_h
-          sed -i 's/-dirty//' ./scripts/setlocalversion
-          rm -rf ./android/abi_gki_protected_exports_*
-          sed -E -i '/^CONFIG_LOCALVERSION=/ s/(.*)"$/\1-ksusfs"/' ./arch/${{ env.ARCH }}/configs/${{ env.KERNEL_DEFCONFIG_PATH }} 
+          perl -pi -e 's/-dirty//' ./scripts/setlocalversion
+          perl -0777 -pi -e 's/(.*)(echo "\$res")/$1echo "-ksusfs"/s' ./common/scripts/setlocalversion
+          perl -pi -e 's{UTS_VERSION="\$\(echo \$UTS_VERSION \$CONFIG_FLAGS \$TIMESTAMP \| cut -b -\$UTS_LEN\)"}{UTS_VERSION="#44 SMP PREEMPT Thu Apr 17 22:50:19 UTC 2025 aarch64 Toybox"}' ./common/scripts/mkcompile_h
+          # sed -E -i '/^CONFIG_LOCALVERSION=/ s/(.*)"$/\1-ksusfs"/' ./arch/${{ env.ARCH }}/configs/${{ env.KERNEL_DEFCONFIG_PATH }} 
 
       - name: 👍 Start building the kernel
         working-directory: ${{ env.KERNEL_NAME }}
