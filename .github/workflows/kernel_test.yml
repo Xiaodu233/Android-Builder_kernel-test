@@ -95,7 +95,7 @@ jobs:
       - name: ⭐ Install prerequisites
         run: |
           sudo apt-get update
-          sudo apt-get install -y ccache gcc g++ libc6-dev libelf-dev
+          sudo apt-get install -y ccache build-essential gcc g++ libc6-dev libelf-dev libssl-dev libfl-dev llvm
           # sudo apt-get install -y curl git ftp lftp wget libarchive-tools ccache python2 python2-dev python3
           # sudo apt-get install -y pngcrush schedtool dpkg-dev liblz4-tool make optipng maven dwarves device-tree-compiler 
           # sudo apt-get install -y libc6-dev-i386 libelf-dev lib32ncurses5-dev libx11-dev lib32z-dev libgl1-mesa-dev xsltproc
