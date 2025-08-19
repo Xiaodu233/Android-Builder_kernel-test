@@ -429,14 +429,14 @@ jobs:
               echo "=> Action: $action, Config: $config, Value: $value"
               case "$action" in
                 "enable" | "disable" | "module")
-                  ./../scripts/config --file .config --"$action" "$config"
+                  ../../scripts/config --file .config --"$action" "$config"
                   ;;
                 "set-val" | "set-str")
                   if [ "$value" == "null" ]; then
                     echo "Error: 'value' is missing for action '$action' on config '$config'"
                     exit 1
                   fi
-                  ./../scripts/config --file .config --"$action" "$config" "$value"
+                  ../../scripts/config --file .config --"$action" "$config" "$value"
                   ;;
                 *)
                   echo "Error: Unknown action '$action' for config '$config'"
