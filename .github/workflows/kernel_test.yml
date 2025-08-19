@@ -276,7 +276,7 @@ jobs:
 
           # Apply common SUSFS patch
           if [ "${{ matrix.CONFIG.KernelSUSFS.branches }}" == "kernel-4.9" ]; then
-            patch -p1 --forward < $GITHUB_WORKSPACE/Kernel/patchs/50_add_susfs_in_kernel-4.9.patch
+            patch -p1 --forward < $GITHUB_WORKSPACE/Kernel/patches/50_add_susfs_in_kernel-4.9.patch
           else
             patch -p1 --forward < 50_add_susfs_in_${{ env.SFS_BRANCH }}.patch
           fi
