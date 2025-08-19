@@ -410,44 +410,43 @@ jobs:
           JSON_CONFIG: '${{ toJSON(matrix.CONFIG) }}'
           ARGS: ${{ steps.generate-args.outputs.ARGS }}
         run: |
-            if [ -z "$(echo "$JSON_CONFIG" | jq '.KernelConfigChanges | select(length > 0)')" ]; then
-              echo "🤔 No kernel config changes found. Skipping..."
-              exit 0
-            fi
+          if [ -z "$(echo "$JSON_CONFIG" | jq '.KernelConfigChanges | select(length > 0)')" ]; then
+            echo "🤔 No kernel config changes found. Skipping..."
+            exit 0
+          fi
 
-            echo "🤔 Applying kernel config changes..."
-            CONFIG_CHANGES=$(echo "$JSON_CONFIG" | jq -r '.KernelConfigChanges | .[] | @base64')
+          echo "🤔 Applying kernel config changes..."
+          CONFIG_CHANGES=$(echo "$JSON_CONFIG" | jq -r '.KernelConfigChanges | .[] | @base64')
 
-            cd ${{ env.OUT_DIR }}
-            for encoded_change in $CONFIG_CHANGES; do
-              decoded_change=$(echo "$encoded_change" | base64 --decode)
+          for encoded_change in $CONFIG_CHANGES; do
+            decoded_change=$(echo "$encoded_change" | base64 --decode)
 
-              action=$(echo "$decoded_change" | jq -r '.action')
-              config=$(echo "$decoded_change" | jq -r '.config')
-              value=$(echo "$decoded_change" | jq -r '.value')
+            action=$(echo "$decoded_change" | jq -r '.action')
+            config=$(echo "$decoded_change" | jq -r '.config')
+            value=$(echo "$decoded_change" | jq -r '.value')
 
-              echo "=> Action: $action, Config: $config, Value: $value"
-              case "$action" in
-                "enable" | "disable" | "module")
-                  ../../scripts/config --file .config --"$action" "$config"
-                  ;;
-                "set-val" | "set-str")
-                  if [ "$value" == "null" ]; then
-                    echo "Error: 'value' is missing for action '$action' on config '$config'"
-                    exit 1
-                  fi
-                  ../../scripts/config --file .config --"$action" "$config" "$value"
-                  ;;
-                *)
-                  echo "Error: Unknown action '$action' for config '$config'"
+            echo "=> Action: $action, Config: $config, Value: $value"
+            case "$action" in
+              "enable" | "disable" | "module")
+                ./scripts/config --file ${{ env.OUT_DIR }}/.config --"$action" "$config"
+                ;;
+              "set-val" | "set-str")
+                if [ "$value" == "null" ]; then
+                  echo "Error: 'value' is missing for action '$action' on config '$config'"
                   exit 1
-                  ;;
-              esac
-            done
+                fi
+                ./scripts/config --file ${{ env.OUT_DIR }}/.config --"$action" "$config" "$value"
+                ;;
+              *)
+                echo "Error: Unknown action '$action' for config '$config'"
+                exit 1
+                ;;
+            esac
+          done
 
-            echo "🤔 All kernel config changes applied successfully."
-            echo "🤔 Finalizing config with 'olddefconfig'..."
-            make ${{ env.ARGS }} olddefconfig
+          echo "🤔 All kernel config changes applied successfully."
+          echo "🤔 Finalizing config with 'olddefconfig'..."
+          make ${{ env.ARGS }} olddefconfig
 
       - name: 😭 Continue building the kernel
         working-directory: ${{ env.KERNEL_NAME }}
