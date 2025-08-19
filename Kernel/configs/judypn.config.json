@@ -3,7 +3,7 @@
     "kernelSource": {
       "name": "android_kernel_lge_sdm845",
       "repo": "https://github.com/LineageOS/android_kernel_lge_sdm845",
-      "branch": "lineage-22.1",
+      "branch": "lineage-22.2",
       "device": "judypn",
       "defconfig": "judypn_lao_com-perf_defconfig"
     },
@@ -34,7 +34,7 @@
     },
     "AnyKernel3": {
       "use": true,
-      "branch": "gki",
+      "branch": "gki-2.0",
       "release": true
     },
     "enableKernelSU": true,
