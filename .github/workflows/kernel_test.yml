@@ -14,7 +14,7 @@ on:
 
 jobs:
   Read-configuration:
-    name: 🐂 Parse *.config.json
+    name: 🐢 Parse *.config.json
     runs-on: ubuntu-latest
     outputs:
       CONFIGS: ${{ steps.generate-matrix.outputs.CONFIGS }}
@@ -38,7 +38,7 @@ jobs:
         run: echo "BUILDDATE=$(date +'%Y%m%d')" >> $GITHUB_OUTPUT
 
   Build-Kernel:
-    name: "🐎 Build kernel"
+    name: "🐇 Build kernel"
     runs-on: ubuntu-latest
     needs:
       - Read-configuration
@@ -82,20 +82,20 @@ jobs:
       CCACHE_DIR: "${{ github.workspace }}/ccache"
     steps:
       # Set swap space
-      - name: 📐 Set swap to 10G
+      - name: 📐 Set swap to 16G
         uses: pierotofy/set-swap-space@master
         with:
-          swap-size-gb: 10
+          swap-size-gb: 16
 
       # This action checks-out your CONFIGSitory under $GITHUB_WORKSPACE, so your workflow can access it.
       - name: 😄 Checkout
         uses: actions/checkout@v5
 
       # Install prerequisites for Ubuntu
-      - name: ⭐ Install prerequisites
+      - name: 🛒 Install prerequisites
         run: |
           sudo apt-get update
-          sudo apt-get install -y ccache gcc-11 g++-11 libelf-dev dwarves
+          sudo apt-get install -y ccache libelf-dev dwarves gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi
           # sudo apt-get install -y curl git ftp lftp wget libarchive-tools ccache python2 python2-dev python3
           # sudo apt-get install -y pngcrush schedtool dpkg-dev liblz4-tool make optipng maven dwarves device-tree-compiler 
           # sudo apt-get install -y libc6-dev-i386 libelf-dev lib32ncurses5-dev libx11-dev lib32z-dev libgl1-mesa-dev xsltproc
@@ -103,10 +103,9 @@ jobs:
           # sudo apt-get install -y build-essential bc gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi libssl-dev libfl-dev
           # sudo apt-get install -y pwgen libswitch-perl policycoreutils minicom libxml-sax-base-perl libxml-simple-perl 
           # sudo apt-get install -y zip unzip tar gzip bzip2 rar unrar llvm g++-multilib bison gperf zlib1g-dev automake
-          aarch64-linux-gnu-gcc -v
 
       # Initialize ccache
-      - name: 🚄 Setup ccache
+      - name: 🛠️ Setup ccache
         if: ${{ env.ENABLE_CCACHE == 'true' }}
         id: hash
         run: |
@@ -120,7 +119,7 @@ jobs:
           echo $(echo -n '${{ toJSON(matrix.config) }}' | openssl dgst -sha1 | awk '{print $2}')
           echo "HASH=$(echo -n '${{ toJSON(matrix.config) }}' | openssl dgst -sha1 | awk '{print $2}')" >> $GITHUB_OUTPUT
 
-      - name: 🚅 Cache ccache & output
+      - name: 🐳 Cache ccache & output
         env:
           HASH: ${{ steps.hash.outputs.HASH }}
         if: ${{ env.ENABLE_CCACHE == 'true' }}
@@ -135,12 +134,12 @@ jobs:
             cache-${{ env.KERNEL_NAME }}-${{env.HASH}}-
             cache-${{ env.KERNEL_NAME }}-
 
-      - name: 🌟 Clone kernel source => (${{ env.KERNEL_REPO }})
+      - name: 🔭 Clone kernel source => (${{ env.KERNEL_REPO }})
         run: |
           git clone --recursive --depth=1 -j $(nproc) --branch ${{ env.KERNEL_BRANCH }} ${{ env.KERNEL_REPO }} ${{ env.KERNEL_NAME }}
           # tree ${{ env.KERNEL_NAME }}
 
-      - name: 💫 Get toolchains
+      - name: 🍽️ Get toolchains
         env:
           toolchains: "${{ toJSON(matrix.CONFIG.toolchains) }}"
         run: |
@@ -151,7 +150,7 @@ jobs:
             toolchain=$(echo $toolchains | jq -r ".[$i]")
 
             toolchain_name=$(echo $toolchain | jq -r ".name")
-            
+
             # From archive
             if echo $toolchain | jq -e 'has("url")' > /dev/null; then
               # If from archive
@@ -257,7 +256,7 @@ jobs:
           # echo -e "CONFIG_HAVE_KPROBES=y" >> arch/${{ env.ARCH }}/configs/${{ env.KERNEL_DEFCONFIG_PATH }}
           # echo -e "CONFIG_KPROBE_EVENTS=y" >> arch/${{ env.ARCH }}/configs/${{ env.KERNEL_DEFCONFIG_PATH }}
 
-          cat arch/${{ env.ARCH }}/configs/${{ env.KERNEL_DEFCONFIG_PATH }}
+          # cat arch/${{ env.ARCH }}/configs/${{ env.KERNEL_DEFCONFIG_PATH }}
 
       - name: 😋 Setup KSU SUSFS
         env: 
@@ -274,6 +273,13 @@ jobs:
           cp ../susfs4ksu/kernel_patches/50_add_susfs_in_${{ env.SFS_BRANCH }}.patch ./
           cp ../susfs4ksu/kernel_patches/fs/* ./fs/
           cp ../susfs4ksu/kernel_patches/include/linux/* ./include/linux/
+
+          # Apply common SUSFS patch
+          if [ "${{ matrix.CONFIG.KernelSUSFS.branches }}" == "kernel-4.9" ]; then
+            patch -p1 --forward < $GITHUB_WORKSPACE/Kernel/patchs/50_add_susfs_in_kernel-4.9.patch
+          else
+            patch -p1 --forward < 50_add_susfs_in_${{ env.SFS_BRANCH }}.patch
+          fi
 
           # Applying SUSFS patches
           cd ./KernelSU-Next
@@ -293,17 +299,12 @@ jobs:
           patch -p1 --forward < fix_sucompat.c.patch
           cp ../../kernel_patches/next/susfs_fix_patches/v1.5.9/fix_kernel_compat.c.patch ./
           patch -p1 --forward < fix_kernel_compat.c.patch
-          
-          # Apply common SUSFS patch
+
           cd ..
-          if [ "${{ matrix.CONFIG.KernelSUSFS.branches }}" == "kernel-4.9" ]; then
-            patch -p1 --fuzz=3 < $GITHUB_WORKSPACE/Kernel/patchs/50_add_susfs_in_kernel-4.9.patch || true
-          else
-            patch -p1 --fuzz=3 < 50_add_susfs_in_${{ env.SFS_BRANCH }}.patch || true
-          fi
-          # Apply New Hooks Patches
+          # Apply Hooks Patches
           cp ../kernel_patches/next/scope_min_manual_hooks_v1.4.patch ./
           patch -p1 --forward -F 3 < scope_min_manual_hooks_v1.4.patch
+
           # Apply Hide Stuff Patches
           cp ../kernel_patches/69_hide_stuff.patch ./
           patch -p1 --forward -F 3 < 69_hide_stuff.patch
@@ -337,7 +338,7 @@ jobs:
           echo "CONFIG_TCP_CONG_BIC=n" >> arch/${{ env.ARCH }}/configs/${{ env.KERNEL_DEFCONFIG_PATH }}
           echo "CONFIG_TCP_CONG_WESTWOOD=n" >> arch/${{ env.ARCH }}/configs/${{ env.KERNEL_DEFCONFIG_PATH }}
           echo "CONFIG_TCP_CONG_HTCP=n" >> arch/${{ env.ARCH }}/configs/${{ env.KERNEL_DEFCONFIG_PATH }}
-          
+
       - name: 😏 Setup LXC docker
         working-directory: ${{ env.KERNEL_NAME }}
         env:
@@ -393,7 +394,7 @@ jobs:
           # echo "CONFIG_LOCALVERSION=\"-ksusfs\"" >> ./arch/${{ env.ARCH }}/configs/${{ env.KERNEL_DEFCONFIG_PATH }}
           # perl -pi -e 's/build-timestamp = \$\(or \$\(KBUILD_BUILD_TIMESTAMP\), \$\(build-timestamp-auto\)\)/build-timestamp = "Tue Apr 1 14:07:47 UTC 2025"/' ./init/Makefile
 
-      - name: 👍 Start building the kernel
+      - name: 🛳️ Start building the kernel
         working-directory: ${{ env.KERNEL_NAME }}
         env:
           ARGS: ${{ steps.generate-args.outputs.ARGS }}
@@ -402,6 +403,56 @@ jobs:
           export KBUILD_BUILD_HOST=Github-Action
           export KBUILD_BUILD_USER=$(echo ${{ github.actor }} | tr A-Z a-z)
           make ${{ env.ARGS }} ${{ env.KERNEL_DEFCONFIG_PATH }}
+
+      - name: ⚙️ Apply Kernel Config Changes
+        env:
+          JSON_CONFIG: '${{ toJSON(matrix.CONFIG) }}'
+          run: |
+            if [ -z "$(echo "$JSON_CONFIG" | jq '.KernelConfigChanges | select(length > 0)')" ]; then
+              echo "🤔 No kernel config changes found. Skipping..."
+              exit 0
+            fi
+
+            echo "🤔 Applying kernel config changes..."
+            CONFIG_CHANGES=$(echo "$JSON_CONFIG" | jq -r '.KernelConfigChanges | .[] | @base64')
+
+            cd ${{ env.OUT_DIR }}
+            for encoded_change in $CONFIG_CHANGES; do
+            decoded_change=$(echo "$encoded_change" | base64 --decode)
+
+            action=$(echo "$decoded_change" | jq -r '.action')
+            config=$(echo "$decoded_change" | jq -r '.config')
+            value=$(echo "$decoded_change" | jq -r '.value')
+
+            echo "🤔 Action: $action, Config: $config, Value: $value"
+            case "$action" in
+              "enable" | "disable" | "module")
+                ./../scripts/config --file .config --"$action" "$config"
+                ;;
+              "set-val" | "set-str")
+                if [ "$value" == "null" ]; then
+                  echo "Error: 'value' is missing for action '$action' on config '$config'"
+                  exit 1
+                fi
+                ./../scripts/config --file .config --"$action" "$config" "$value"
+                ;;
+              *)
+                echo "Error: Unknown action '$action' for config '$config'"
+                exit 1
+                ;;
+              esac
+            done
+
+            echo "🤔 All kernel config changes applied successfully."
+            echo "🤔 Finalizing config with 'olddefconfig'..."
+            make ${{ steps.generate-args.outputs.ARGS }} olddefconfig
+            cd ${{ env.WORKSPACE }}
+
+      - name: 😭 Continue building the kernel
+        working-directory: ${{ env.KERNEL_NAME }}
+        env:
+          ARGS: ${{ steps.generate-args.outputs.ARGS }}
+        run: |
           make ${{ env.ARGS }}
           # tree ${{ env.OUT_DIR }}
 
@@ -415,7 +466,7 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
-      - name: 💙 Upload Image.gz
+      - name: 💚 Upload Image.gz
         uses: actions/upload-artifact@v4
         env:
           ARCH: ${{ steps.generate-args.outputs.ARCH }}
@@ -455,7 +506,7 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
-      - name: ☢️ Upload output directory
+      - name: 🖇️ Upload output directory
         uses: actions/upload-artifact@v4
         env:
           ARCH: ${{ steps.generate-args.outputs.ARCH }}
@@ -464,7 +515,7 @@ jobs:
           path: ${{ env.OUT_DIR }}/arch/${{ env.ARCH }}/boot/
           retention-days: 7
 
-      - name: ⏰ Pack Anykernel3
+      - name: 📦 Pack Anykernel3
         if: ${{ env.USE_ANYKERNEL3 == 'true' }}
         env:
           ANYKERNEL3_BRANCH: ${{ matrix.CONFIG.AnyKernel3.branch }}
@@ -500,7 +551,7 @@ jobs:
           cd AnyKernel3/
           zip -q -r "${{ env.ANYKERNEL3_FILE }}.zip" *
 
-      - name: "💾 Upload AnyKernel3 image => (${{ env.BUILD_DATE }})"
+      - name: "🛫 Upload AnyKernel3 image => (${{ env.BUILD_DATE }})"
         env:
           ANYKERNEL3_FILE: "AnyKernel3-${{ env.KERNEL_NAME }}-${{ env.BUILD_DATE }}"
         uses: actions/upload-artifact@v4
@@ -509,7 +560,7 @@ jobs:
           name: "${{ env.ANYKERNEL3_FILE }}"
           path: AnyKernel3/*
 
-      - name: 🧧 Create GitHub Release => (${{ env.BUILD_DATE }})
+      - name: 🎉 Create GitHub Release => (${{ env.BUILD_DATE }})
         env:
           ANYKERNEL3_FILE: "${{ env.WORKSPACE }}/AnyKernel3-${{ env.KERNEL_NAME }}-${{ env.BUILD_DATE }}"
         continue-on-error: true
