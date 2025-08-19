@@ -39,10 +39,6 @@
         "config": "CONFIG_LTO_CLANG"
       },
       {
-        "action": "enable",
-        "config": "CONFIG_LTO_CLANG_FULL"
-      },
-      {
         "action": "disable",
         "config": "CONFIG_KPROBES"
       }
