@@ -29,9 +29,16 @@
         "OBJDUMP":"clang/bin/llvm-objdump",
         "STRIP":"clang/bin/llvm-strip",
         "LD":"clang/bin/ld.lld",
-        "LTO": "thin"
+        "LLVM": "1",
+        "LLVM_IAS": "1"
       }
     },
+    "KernelConfigChanges": [
+      {
+        "action": "enable",
+        "config": "CONFIG_LTO_CLANG"
+      }
+    ],
     "AnyKernel3": {
       "use": true,
       "branch": "gki-2.0",
