@@ -132,13 +132,16 @@ jobs:
           git clone --recursive --depth=1 -j $(nproc) --branch ${{ env.KERNEL_BRANCH }} ${{ env.KERNEL_REPO }} ${{ env.KERNEL_NAME }}
           # tree ${{ env.KERNEL_NAME }}
 
-      - name: 🩹 Patch Makefile to bypass hardcoded gold linker check
+      - name: 🩹 Patch kernel source to try to fix
         working-directory: ${{ env.KERNEL_NAME }}
         if: ${{ env.KERNEL_DEVICE == 'judypn' }}
         run: |
-          echo "🤔 Makefile has a hardcoded check for GNU gold linker. Bypassing it..."
+          echo "🤔 Bypassing hardcoded check for GNU gold linker in Makefile..."
           sed -i "s/ifneq (\$(call gold-ifversion, -ge, 112000000, y), y)/ifneq (y, y)/" Makefile
           echo "✅ Bypass complete."
+          echo "🤔 Applying patch for qcacld-3.0 Kbuild..."
+          sed -i 's/$(MODNAME)-y := $(OBJS)/$(MODNAME)-objs := $(OBJS)/' drivers/staging/qcacld-3.0/Kbuild
+          echo "✅ Patch applied."
 
       - name: 🍽️ Get toolchains
         env:
