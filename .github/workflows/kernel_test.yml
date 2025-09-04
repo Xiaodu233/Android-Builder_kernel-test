@@ -95,7 +95,7 @@ jobs:
       - name: 🛒 Install prerequisites
         run: |
           sudo apt-get update
-          sudo apt-get install -y ccache libelf-dev dwarves gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi llvm lld
+          sudo apt-get install -y ccache dwarves libelf-dev libssl-dev gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi llvm lld
 
       # Initialize ccache
       - name: 🛠️ Setup ccache
@@ -272,6 +272,9 @@ jobs:
           git clone https://gitlab.com/simonpunk/susfs4ksu.git -b "${{ env.SFS_BRANCH }}"
           git clone https://github.com/WildKernels/kernel_patches.git
 
+          # Patch ptrace
+          patch -p1 -F 3 < "../kernel_patches/gki_ptrace.patch"
+
           # Copy SUSFS patches
           cd ${{ env.KERNEL_NAME }}
           cp ../susfs4ksu/kernel_patches/50_add_susfs_in_${{ env.SFS_BRANCH }}.patch ./
@@ -293,10 +296,6 @@ jobs:
           patch -p1 --forward < fix_apk_sign.c.patch
           cp ../../kernel_patches/next/susfs_fix_patches/v1.5.9/fix_core_hook.c.patch ./
           patch -p1 --forward --fuzz=3 < fix_core_hook.c.patch
-          cp ../../kernel_patches/next/susfs_fix_patches/v1.5.9/fix_selinux.c.patch ./
-          patch -p1 --forward < fix_selinux.c.patch
-          cp ../../kernel_patches/next/susfs_fix_patches/v1.5.9/fix_ksud.c.patch ./
-          patch -p1 --forward < fix_ksud.c.patch
           cp ../../kernel_patches/next/susfs_fix_patches/v1.5.9/fix_rules.c.patch ./
           patch -p1 --forward < fix_rules.c.patch
           cp ../../kernel_patches/next/susfs_fix_patches/v1.5.9/fix_sucompat.c.patch ./
@@ -332,16 +331,6 @@ jobs:
           echo "CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG=y" >> arch/${{ env.ARCH }}/configs/${{ env.KERNEL_DEFCONFIG_PATH }}
           echo "CONFIG_KSU_SUSFS_OPEN_REDIRECT=y" >> arch/${{ env.ARCH }}/configs/${{ env.KERNEL_DEFCONFIG_PATH }}
           echo "CONFIG_KSU_SUSFS_SUS_SU=n" >> arch/${{ env.ARCH }}/configs/${{ env.KERNEL_DEFCONFIG_PATH }}
-
-          # Add additional config setting
-          echo "CONFIG_TMPFS_XATTR=y" >> arch/${{ env.ARCH }}/configs/${{ env.KERNEL_DEFCONFIG_PATH }}
-          echo "CONFIG_TMPFS_POSIX_ACL=y" >> arch/${{ env.ARCH }}/configs/${{ env.KERNEL_DEFCONFIG_PATH }}
-          echo "CONFIG_TCP_CONG_ADVANCED=y" >> arch/${{ env.ARCH }}/configs/${{ env.KERNEL_DEFCONFIG_PATH }}
-          echo "CONFIG_TCP_CONG_BBR=y" >> arch/${{ env.ARCH }}/configs/${{ env.KERNEL_DEFCONFIG_PATH }}
-          echo "CONFIG_NET_SCH_FQ=y" >> arch/${{ env.ARCH }}/configs/${{ env.KERNEL_DEFCONFIG_PATH }}
-          echo "CONFIG_TCP_CONG_BIC=n" >> arch/${{ env.ARCH }}/configs/${{ env.KERNEL_DEFCONFIG_PATH }}
-          echo "CONFIG_TCP_CONG_WESTWOOD=n" >> arch/${{ env.ARCH }}/configs/${{ env.KERNEL_DEFCONFIG_PATH }}
-          echo "CONFIG_TCP_CONG_HTCP=n" >> arch/${{ env.ARCH }}/configs/${{ env.KERNEL_DEFCONFIG_PATH }}
 
       - name: 😏 Setup LXC docker
         working-directory: ${{ env.KERNEL_NAME }}
@@ -392,9 +381,8 @@ jobs:
           ARCH: ${{ steps.generate-args.outputs.ARCH }}
         run: |
           perl -pi -e 's/-dirty//' ./scripts/setlocalversion
-          perl -0777 -pi -e 's/(.*)(echo "\$res")/$1echo "-ksusfs"/s' ./scripts/setlocalversion
+          perl -0777 -pi -e 's/(echo "\$res")(?!.*echo "\$res")/echo "-ksusfs"/s' ./scripts/setlocalversion
           perl -pi -e 's{UTS_VERSION="\$\(echo \$UTS_VERSION \$CONFIG_FLAGS \$TIMESTAMP \| cut -b -\$UTS_LEN\)"}{UTS_VERSION="#1 SMP PREEMPT Tue Apr 1 14:07:47 UTC 2025 aarch64 Toybox"}' ./scripts/mkcompile_h
-          # sed -E -i '/^CONFIG_LOCALVERSION=/ s/(.*)"$/\1-ksusfs"/' ./arch/${{ env.ARCH }}/configs/${{ env.KERNEL_DEFCONFIG_PATH }}
           # echo "CONFIG_LOCALVERSION=\"-ksusfs\"" >> ./arch/${{ env.ARCH }}/configs/${{ env.KERNEL_DEFCONFIG_PATH }}
           # perl -pi -e 's/build-timestamp = \$\(or \$\(KBUILD_BUILD_TIMESTAMP\), \$\(build-timestamp-auto\)\)/build-timestamp = "Tue Apr 1 14:07:47 UTC 2025"/' ./init/Makefile
 
