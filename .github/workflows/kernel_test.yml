@@ -273,7 +273,7 @@ jobs:
           git clone https://github.com/WildKernels/kernel_patches.git
 
           # Patch ptrace
-          patch -p1 -F 3 < "../kernel_patches/gki_ptrace.patch"
+          patch -p1 -F 3 < "../../kernel_patches/gki_ptrace.patch"
 
           # Copy SUSFS patches
           cd ${{ env.KERNEL_NAME }}
