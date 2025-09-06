@@ -382,10 +382,10 @@ jobs:
           ARCH: ${{ steps.generate-args.outputs.ARCH }}
         run: |
           perl -pi -e 's/-dirty//' ./scripts/setlocalversion
-          perl -0777 -pi -e 's/(echo "\$res")(?!.*echo "\$res")/echo "-ksusfs"/s' ./scripts/setlocalversion
+          perl -0777 -pi -e 's/(echo "\$res")(?!.*\1)/echo "\-ksusfs"/s' ./scripts/setlocalversion
           perl -pi -e 's{UTS_VERSION="\$\(echo \$UTS_VERSION \$CONFIG_FLAGS \$TIMESTAMP \| cut -b -\$UTS_LEN\)"}{UTS_VERSION="#1 SMP PREEMPT Tue Apr 1 14:07:47 UTC 2025 aarch64 Toybox"}' ./scripts/mkcompile_h
           # echo "CONFIG_LOCALVERSION=\"-ksusfs\"" >> ./arch/${{ env.ARCH }}/configs/${{ env.KERNEL_DEFCONFIG_PATH }}
-          # perl -pi -e 's/build-timestamp = \$\(or \$\(KBUILD_BUILD_TIMESTAMP\), \$\(build-timestamp-auto\)\)/build-timestamp = "Tue Apr 1 14:07:47 UTC 2025"/' ./init/Makefile
+          perl -pi -e 's/build-timestamp = \$\(or \$\(KBUILD_BUILD_TIMESTAMP\), \$\(build-timestamp-auto\)\)/build-timestamp = "Tue Apr 1 14:07:47 UTC 2025"/' ./init/Makefile
 
       - name: 🛳️ Start building the kernel
         working-directory: ${{ env.KERNEL_NAME }}
